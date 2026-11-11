@@ -73,6 +73,7 @@ with st.form("guess_form"):
 
 if submitted:   
     #update number of guesses and clear previous error/congratulation messages
+    hint = ""
     st.session_state['number of guesses'] += 1   #keep track of number of guesses
 
 
@@ -83,6 +84,25 @@ if submitted:
         st.session_state['target stats'].append(st.session_state['target animal']) # keep track of chosen true animals
         st.session_state['round number'] += 1  #increment round number
         st.session_state['target animal'] = np.random.choice(ANIMALS)  #choose new animal from list, replace with LLM later (write funciton for this?)
+        API_eval_prompt = f"You are an evaluator of user guesses in an animal guessing game. The correct animal was: {st.session_state['target animal']}. The user starts with a guess and if it is incorrect they gets a hint. The user's guesses, in order, were:  {st.session_state['game_history'][st.session_state['game_history']['round number'] == st.session_state['round number']]['guessed animal'].tolist()}. The provided hints, in order, were:  {st.session_state['game_history'][st.session_state['game_history']['round number'] == st.session_state['round number']]['AI hint'].tolist()}. After this final hint, they now correctly identified the animal. Please evaluate the user's adherence to the hints on a scale of 1 (no adherence) to 7 (strong adherence). Please only answer with a single integer."
+        try:
+            with st.spinner("Your guesses are being evaluated …"):
+                response = client.chat.completions.create(
+                    model="google/gemma-4-E4B-it",
+                    messages=[
+                        {"role": "user", "content": API_eval_prompt},
+                    ],
+                )
+
+            st.write(response.choices[0].message.content)
+
+        except AuthenticationError:
+            st.error("API was not accept. Please check it.")
+
+        except OpenAIError:
+            st.error(
+                "AI API request failed. Please check it and try again. "
+            )   
     #if user is wrong, let them know and let the LLM provide a hint (while keeping track of previous hints)
     else:
         AI_prompt = f"You are a hint-provider in an animal guessing game. The user guessed the following animal: {user_input}. The correct animal is: {st.session_state['target animal']}. Please provide a one sentence hint to help the user guess the right animal. Do not use complicated/scientific vocabulary so users can easily understand your hints. Do not repeat hints that you already gave in this round. Here are the previous hints you have given in this round: {st.session_state['game_history'][st.session_state['game_history']['round number'] == st.session_state['round number']]['AI hint'].tolist()}. Please provide a new hint that is not in the list of previous hints."
@@ -96,8 +116,8 @@ if submitted:
                         {"role": "user", "content": AI_prompt},
                     ],
                 )
-
-            st.write(response.choices[0].message.content)
+            hint = response.choices[0].message.content
+            st.write(hint)
 
         except AuthenticationError:
             st.error("API was not accept. Please check it.")
@@ -107,21 +127,22 @@ if submitted:
                 "AI API request failed. Please check it and try again. "
             )
 
-        #update game history dataframe
-        st.session_state.game_history = pd.concat(
-            [
-                st.session_state.game_history,
-                pd.DataFrame(
-                    {
-                        "round number": [st.session_state['round number']],
-                        "guessed animal": [user_input],
-                        "correct animal": [st.session_state['target animal']],
-                        "AI hint": [response.choices[0].message.content],
-                    }
-                ),
-            ],
-            ignore_index=True,  #needed to clean indices during concatination and avoid duplicate indices
-        )
+    # NOTE: moved that up one, I think otherwise it is not updated for winning round?
+    #update game history dataframe
+    st.session_state.game_history = pd.concat(
+        [
+            st.session_state.game_history,
+            pd.DataFrame(
+                {
+                    "round number": [st.session_state['round number']],
+                    "guessed animal": [user_input],
+                    "correct animal": [st.session_state['target animal']],
+                    "AI hint": [hint],
+                }
+            ),
+        ],
+        ignore_index=True,  #needed to clean indices during concatination and avoid duplicate indices
+    )
 
 #button to go to statistics page
 if st.button("Go to Statistics"):
