@@ -4,9 +4,12 @@ import numpy as np
 import pandas as pd
 from openai import OpenAI, AuthenticationError, OpenAIError
 
+# TODO: Save API key somehow?
+
 # TODO: possibly state for game won?
 # TODO: alternate spellings
 # TODO: what to do with nonsense input
+
 # TODO: clear field when guess is correct? (or in general and print in answer?)
 st.set_page_config(page_title="Welcome to our Animal Guessing Game!")
 
@@ -29,7 +32,7 @@ client = OpenAI(
     api_key=api_key
 )
 
-##Actual game code starts here
+## ── Actual game code starts here ──────────────────────────────────────────── ##
 #Initialize session state variables if they don't exist yet:
 if 'n_guess' not in st.session_state:
     st.session_state['n_guess'] = 0
@@ -60,16 +63,8 @@ if 'round_idx' not in st.session_state:
 
 if 'evaluation_scores' not in st.session_state:
     st.session_state['evaluation_scores'] = dict()
-    # st.session_state['evaluation_scores'] = []
-    # st.session_state.game_history = pd.DataFrame(
-    #     columns = [
-    #         "n_rounds",
-    #         "hint_adherence",
-    #         "n_guesses",
-    #     ]
-    # )
 
-##Actual page code starts here##
+## ── Actual page code starts here ──────────────────────────────────────────── ##
 st.header("Let's Guess Animals")
 
 st.markdown("""
@@ -87,7 +82,6 @@ if submitted:
     #update number of guesses and clear previous error/congratulation messages
     hint = ""
     st.session_state['n_guess'] += 1   #keep track of number of guesses
-
 
     #check if the guess is correct, if yes, congratulate, update statistics
     if user_input.lower() == st.session_state['target_animal']:
@@ -126,7 +120,6 @@ if submitted:
                 "AI API request failed. Please check it and try again. "
             )
 
-    # NOTE: moved that up one, I think otherwise it is not updated for winning round?
     #update game history dataframe
     st.session_state.game_history = pd.concat(
         [
@@ -134,7 +127,7 @@ if submitted:
             pd.DataFrame(
                 {
                     "round_idx": [st.session_state['round_idx']],
-                    "guessed_animal": [user_input],
+                    "guessed_animal": [user_input.lower()],
                     "correct_animal": [st.session_state['target_animal']],
                     "AI_hint": [hint],
                 }
@@ -145,7 +138,7 @@ if submitted:
 
     # after updating game history, evaluate guess and pick new animal
     if user_input.lower() == st.session_state['target_animal']:
-        # evaluate user input
+        # use LLM to evaluate user input
         # TODO: fix evaluation procedure
         # e.g.: guess 1 hint 1 array or provide example
         # OR embed guess and true animal, calculate cosine difference
@@ -155,7 +148,7 @@ if submitted:
         The user's guesses, in order, were:  {st.session_state['game_history'][st.session_state['game_history']['round_idx'] == st.session_state['round_idx']]['guessed_animal'].tolist()}. 
         The provided hints, in order, were:  {st.session_state['game_history'][st.session_state['game_history']['round_idx'] == st.session_state['round_idx']]['AI_hint'].tolist()}. 
         After this final hint, they now correctly identified the animal. For each guess, look at previous hints to see if the guessed animal fulfills the mentioned qualities. 
-        Please evaluate the user's overall adherence to the hints on a scale of 1 (strong adherence) to 7 (no adherence). Please only answer with a single integer."""
+        Please evaluate the user's overall adherence to the hints on a scale of 1 (strong adherence) to 5 (no adherence). Please only answer with a single integer."""
         print(API_eval_prompt)
         try:
             with st.spinner("Want to know how well you did? We are evaluating the quality of your guesses …"):
@@ -166,26 +159,10 @@ if submitted:
                     ],
                 )
 
-            st.write(f"On a scale from 1 (strong adherence) to 7 (no adherence), you scored: {response.choices[0].message.content}")
-            #eval = (st.session_state['round_idx'], int(response.choices[0].message.content))
-            #st.session_state['evaluation_scores'].append(eval)
+            st.write(f"On a scale from 1 (strong adherence) to 5 (no adherence), you scored: {response.choices[0].message.content}")
             st.session_state['evaluation_scores'].update({st.session_state['round_idx']: (int(response.choices[0].message.content))})
             print(st.session_state['evaluation_scores'])
-            # Save API key somehow?
-            #st.secrets
-            # st.session_state.eval_history = pd.concat(
-            #     [
-            #         st.session_state.eval_history,
-            #         pd.DataFrame(
-            #             {
-            #                 "n_rounds": [st.session_state['round_idx']],
-            #                 "hint_adherence": int(response.choices[0].message.content),
-            #                 "n_guesses": [st.session_state.game_history['round_idx'].value_counts().get(i, 0)],
-            #             }
-            #         ),
-            #     ],
-            #     ignore_index=True,  #needed to clean indices during concatination and avoid duplicate indices
-            # )
+
         except AuthenticationError:
             st.error("API was not accept. Please check it.")
 

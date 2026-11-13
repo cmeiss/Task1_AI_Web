@@ -1,19 +1,12 @@
 import streamlit as st
 import pandas as pd
 from collections import Counter
-
-#very basic statistics page, just showing number of incorrect guesses vs. number of total guesses
+import matplotlib.pyplot as plt
 
 st.header("Game Statistics")
 
-# st.metric(label="Number of incorrect guesses:", value=st.session_state['n_guess'] - st.session_state['correct_guesses'])
-
 # Number of games played
 st.metric(label="Number of games won:", value=st.session_state['correct_guesses'])
-
-# Average number of guesses per game
-# TODO: figure out how to round that
-st.metric(label="Average number of guesses per game:", value=(st.session_state['n_guess'] / st.session_state['correct_guesses']))
 
 # Create eval dataframe
 eval_df = pd.DataFrame(
@@ -24,12 +17,11 @@ eval_df = pd.DataFrame(
         "eval_score"
     ]
 )
+
+total_hint_ad = 0
 for round, hint_ad in st.session_state['evaluation_scores'].items():
-#for i in range(1, st.session_state['round_idx']):
     n_guesses = int(st.session_state.game_history['round_idx'].value_counts().get(round, 0))
-    # print(f"Eval score = {hint_ad} * {n_guesses} = {hint_ad * n_guesses}")
-    # print(f"Hint ad tyoe = {type(hint_ad)}")
-    # eval_score = int(hint_ad * n_guesses)
+    total_hint_ad += hint_ad
     eval_df = pd.concat(
         [
             eval_df,
@@ -47,32 +39,28 @@ for round, hint_ad in st.session_state['evaluation_scores'].items():
     )
 eval_df = eval_df.set_index("n_rounds")
 
-# Construct guesses per game from history
+# M´Number of guesses per game and on average (rounded to two decimal points) 
 st.markdown("""
 
 Wow, so quick! Below you can see the amount of guesses for each round ...
 
 """)
 
+st.metric(label="Average number of guesses per game:", value= f"{(st.session_state['n_guess'] / st.session_state['correct_guesses']):.2f}")
+
 st.bar_chart(eval_df.drop(["hint_adherence", "eval_score"], axis=1), x_label= "Round", y_label="Number of guesses")
 
-#Old version of that
-# n_guess_per_game = []
-# for i in range(1, st.session_state['round_idx']):
-#     n_guess_per_game.append(st.session_state.game_history['round_idx'].value_counts().get(i, 0))
-# df = pd.DataFrame(n_guess_per_game)
-# df.index = range(1, len(df) + 1)
-# st.bar_chart(df, x_label= "Round", y_label="Number of guesses")
-
+# Hint adherence per game and on average (rounded to two decimal points)
 st.markdown("""
 
 ... and how well you adhered to the given hints:
 
 """)
 
-st.bar_chart(eval_df.drop(["n_guesses", "eval_score"], axis=1), x_label= "Round", y_label="Hint adherence score (1 to 7)", color = "red")
+st.metric(label="Average hint adherence:", value= f"{(total_hint_ad / st.session_state['correct_guesses']):.2f}")
 
-# TODO: represent estimated guessing quality in interesting and transparent way to user
+st.bar_chart(eval_df.drop(["n_guesses", "eval_score"], axis=1), x_label= "Round", y_label="Hint adherence score (1 to 5)", color = "red")
+
 st.markdown("""
 
 Your guesses are evaluated based on amount of guesses needed, and adherence to hints. The lower the score, the better:
@@ -88,7 +76,17 @@ Your favourite animal guesses from all rounds are:
 
 """)
 
-# TODO: change guessed animal to user_input.lower()
-count = Counter(st.session_state.game_history['guessed_animal'].str.lower())
-st.bar_chart(count, color="orange")
+COLOR = 'white' # default text colour is black
+plt.rcParams['text.color'] = COLOR
+plt.rcParams['axes.labelcolor'] = COLOR
+plt.rcParams['xtick.color'] = COLOR
+plt.rcParams['ytick.color'] = COLOR
 
+count = Counter(st.session_state.game_history['guessed_animal'].str.lower())
+
+fig, ax = plt.subplots()
+ax.pie(count.values(), labels=count.keys(), autopct='%1.1f%%', startangle=90)
+ax.axis('equal')  # to make round
+fig.set_facecolor('none') # default background colour is white
+
+st.pyplot(fig)
