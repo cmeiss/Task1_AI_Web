@@ -3,37 +3,19 @@ from constants import *
 import numpy as np
 import pandas as pd
 from openai import OpenAI, AuthenticationError, OpenAIError
+from autocorrect import Speller
 
-# TODO: Save API key somehow?
+# DONE: Save API key somehow?
 
 # TODO: possibly state for game won?
-# TODO: alternate spellings
+# DONE: alternate spellings
 # TODO: what to do with nonsense input
 
 # TODO: clear field when guess is correct? (or in general and print in answer?)
 st.set_page_config(page_title="Welcome to our Animal Guessing Game!")
 
-# ── ask for API Key, stop if not yet provided  ────────────────────────────────────────────
-with st.sidebar:
-    api_key = st.text_input(
-        "UOS AI API-Key",
-        type="password",
-        key="uos_api_key",
-        placeholder="sk-...",
-    ).strip()
+#------------Initialize session state variables if they don't exist yet----------------------------------
 
-if not api_key:
-    st.info("Please enter your Uni Osnabrück API key. If you don't have one, you can obtain it from https://ai-keys.uni-osnabrueck.de.")
-    st.stop()
-
-# pass the entered key
-client = OpenAI(
-    base_url="https://litellm.uni-osnabrueck.de/v1",
-    api_key=api_key
-)
-
-## ── Actual game code starts here ──────────────────────────────────────────── ##
-#Initialize session state variables if they don't exist yet:
 if 'n_guess' not in st.session_state:
     st.session_state['n_guess'] = 0
 
@@ -64,6 +46,33 @@ if 'round_idx' not in st.session_state:
 if 'evaluation_scores' not in st.session_state:
     st.session_state['evaluation_scores'] = dict()
 
+if 'api_key' not in st.session_state:
+    st.session_state.api_key = None
+
+
+# ── ask for API Key, stop if not yet provided  ────────────────────────────────────────────
+with st.sidebar:    
+    st.session_state.api_key = st.text_input(
+        "UOS AI API-Key",
+        type="password",
+        key="uos_api_key",
+        placeholder="sk-...",
+        value=st.session_state.api_key,
+    )
+
+if not st.session_state.api_key:
+    st.info("Please enter your Uni Osnabrück API key. If you don't have one, you can obtain it from https://ai-keys.uni-osnabrueck.de.")
+    st.stop()
+
+# pass the entered key
+client = OpenAI(
+    base_url="https://litellm.uni-osnabrueck.de/v1",
+    api_key=st.session_state.api_key
+)
+
+
+
+
 ## ── Actual page code starts here ──────────────────────────────────────────── ##
 st.header("Let's Guess Animals")
 
@@ -76,6 +85,7 @@ Welcome to our Animal Guessing Game!
 #ask for a guess from user
 with st.form("guess_form"):
     user_input = st.text_input("Enter your guess for the animal:")
+    user_input = Speller()(user_input)          #autocorrect user input to avoid giving wrong feedback due to spelling errors
     submitted = st.form_submit_button("Submit Guess")
 
 if submitted:   
@@ -86,6 +96,7 @@ if submitted:
     #check if the guess is correct, if yes, congratulate, update statistics
     if user_input.lower() == st.session_state['target_animal']:
         st.success(f"Congratulations! You guessed the correct animal: {st.session_state['target_animal']}!")
+        st.balloons()        
         st.session_state['correct_guesses'] += 1  #keep track of number of correct guesses
         st.session_state['target_stats'].append(st.session_state['target_animal']) # keep track of chosen true animals
 
@@ -136,19 +147,26 @@ if submitted:
         ignore_index=True,  #needed to clean indices during concatination and avoid duplicate indices
     )
 
+
     # after updating game history, evaluate guess and pick new animal
     if user_input.lower() == st.session_state['target_animal']:
         # use LLM to evaluate user input
         # TODO: fix evaluation procedure
         # e.g.: guess 1 hint 1 array or provide example
         # OR embed guess and true animal, calculate cosine difference
+        st.write("Here's an evaluation of the quality of your guesses in this round:")
+        hint_guess_pairs = st.session_state['game_history'][st.session_state['game_history']['round_idx'] == st.session_state['round_idx']][['guessed_animal', 'AI_hint']].values.tolist()
+        print(f"Hint-guess pairs for evaluation: {hint_guess_pairs}")
         API_eval_prompt = f"""You are an evaluator of user guesses in an animal guessing game. 
         The correct animal was: {st.session_state['target_animal']}. 
         The user starts with a guess and if it is incorrect they gets a hint. 
-        The user's guesses, in order, were:  {st.session_state['game_history'][st.session_state['game_history']['round_idx'] == st.session_state['round_idx']]['guessed_animal'].tolist()}. 
-        The provided hints, in order, were:  {st.session_state['game_history'][st.session_state['game_history']['round_idx'] == st.session_state['round_idx']]['AI_hint'].tolist()}. 
+        The following guesses and hints were made in this round: {hint_guess_pairs}.
         After this final hint, they now correctly identified the animal. For each guess, look at previous hints to see if the guessed animal fulfills the mentioned qualities. 
-        Please evaluate the user's overall adherence to the hints on a scale of 1 (strong adherence) to 5 (no adherence). Please only answer with a single integer."""
+        Please evaluate the user's overall adherence to the hints on a scale of 1 (strong adherence) to 5 (no adherence). 
+        Strong adherence means that the guessed animal matches with the given hint, even if it is not the correct animal. 
+        E.g. if the hint was that the animal is a bird, any entered bird would be considered strong adherence. No adherence means that the 
+        hint was not considered at all. E.g. if the hint was that the animal hates water and the user guesses fish, this would be considered no adherence.
+        A value in the middle indicates that the guess wasn't entirely ignoring the hints but also not fully adhering to them.Please only answer with a single integer."""
         print(API_eval_prompt)
         try:
             with st.spinner("Want to know how well you did? We are evaluating the quality of your guesses …"):
@@ -175,6 +193,9 @@ if submitted:
         st.session_state['round_idx'] += 1  #increment round number
         st.session_state['target_animal'] = np.random.choice(ANIMALS)  #choose new animal from list, replace with LLM later (write funciton for this?)
 
+        st.write("💡 Start a new game by entering a new guess above. A new animal has already been chosen for you.")
+
+        
 #button to go to statistics page
 if st.button("Go to Statistics"):
     st.switch_page("statistics.py")

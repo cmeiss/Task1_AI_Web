@@ -8,6 +8,8 @@ st.header("Game Statistics")
 # Number of games played
 st.metric(label="Number of games won:", value=st.session_state['correct_guesses'])
 
+st.text("") #create whitespace between metrics
+
 # Create eval dataframe
 eval_df = pd.DataFrame(
     columns = [
@@ -46,7 +48,14 @@ Wow, so quick! Below you can see the amount of guesses for each round ...
 
 """)
 
-st.metric(label="Average number of guesses per game:", value= f"{(st.session_state['n_guess'] / st.session_state['correct_guesses']):.2f}")
+st.text("") #create whitespace between metrics
+
+if st.session_state['correct_guesses'] > 0:
+    st.metric(label="Average number of guesses per game:", value= f"{(st.session_state['n_guess'] / st.session_state['correct_guesses']):.2f}")
+else:
+    st.metric(label="Average number of guesses per game:", value= "N/A")
+
+st.text("") #create whitespace between metrics
 
 st.bar_chart(eval_df.drop(["hint_adherence", "eval_score"], axis=1), x_label= "Round", y_label="Number of guesses")
 
@@ -57,9 +66,14 @@ st.markdown("""
 
 """)
 
-st.metric(label="Average hint adherence:", value= f"{(total_hint_ad / st.session_state['correct_guesses']):.2f}")
+st.text("") #create whitespace between metrics
 
-st.bar_chart(eval_df.drop(["n_guesses", "eval_score"], axis=1), x_label= "Round", y_label="Hint adherence score (1 to 5)", color = "red")
+if st.session_state['correct_guesses'] > 0:
+    st.metric(label="Average hint adherence:", value= f"{(total_hint_ad / st.session_state['correct_guesses']):.2f}")
+else:
+    st.metric(label="Average hint adherence:", value= "N/A")
+
+st.text("") #create whitespace between metrics
 
 st.markdown("""
 
@@ -67,7 +81,16 @@ Your guesses are evaluated based on amount of guesses needed, and adherence to h
 
 """)
 
+st.text("") #create whitespace between metrics
+
+st.bar_chart(eval_df.drop(["n_guesses", "eval_score"], axis=1), x_label= "Round", y_label="Hint adherence score (1 to 5)", color = "red")
+
+st.text("") #create whitespace between metrics
+
 st.bar_chart(eval_df.drop(["n_guesses", "hint_adherence"], axis=1), x_label= "Round", y_label="Score", color = "violet")
+
+
+st.text("") #create whitespace between metrics
 
 
 st.markdown("""
@@ -75,6 +98,8 @@ st.markdown("""
 Your favourite animal guesses from all rounds are:
 
 """)
+
+st.text("") #create whitespace between metrics
 
 COLOR = 'white' # default text colour is black
 plt.rcParams['text.color'] = COLOR
@@ -84,9 +109,14 @@ plt.rcParams['ytick.color'] = COLOR
 
 count = Counter(st.session_state.game_history['guessed_animal'].str.lower())
 
-fig, ax = plt.subplots()
-ax.pie(count.values(), labels=count.keys(), autopct='%1.1f%%', startangle=90)
-ax.axis('equal')  # to make round
-fig.set_facecolor('none') # default background colour is white
+if len(count) == 0:
+    st.write("No guesses made yet.")
+else:
+    fig, ax = plt.subplots()
+    #ax.pie(count.values(), labels=count.keys(), autopct='%1.1f%%', startangle=90)
+    ax.pie(count.values(), labels=count.keys(), textprops={'color': 'black'}, autopct='%1.1f%%', startangle=90)
+    ax.axis('equal')  # to make round
+    fig.set_facecolor('none') # default background colour is white
 
-st.pyplot(fig)
+    st.pyplot(fig)
+
