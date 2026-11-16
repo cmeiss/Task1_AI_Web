@@ -164,9 +164,11 @@ if submitted:
         After this final hint, they now correctly identified the animal. For each guess, look at previous hints to see if the guessed animal fulfills the mentioned qualities. 
         Please evaluate the user's overall adherence to the hints on a scale of 1 (strong adherence) to 5 (no adherence). 
         Strong adherence means that the guessed animal matches with the given hint, even if it is not the correct animal. 
-        E.g. if the hint was that the animal is a bird, any entered bird would be considered strong adherence. No adherence means that the 
-        hint was not considered at all. E.g. if the hint was that the animal hates water and the user guesses fish, this would be considered no adherence.
-        A value in the middle indicates that the guess wasn't entirely ignoring the hints but also not fully adhering to them.Please only answer with a single integer."""
+        E.g. if the hint was that the animal is a bird, any entered bird would be considered strong adherence (1).
+        If the user guesses the correct animal after only one hint, this would almost automatically be considered strong adherence (1). 
+        No adherence means that the hint was not considered at all. 
+        E.g. if the hint was that the animal hates water and the user guesses fish, this would be considered no adherence (5).
+        A value in the middle indicates that the guess wasn't entirely ignoring the hints but also not fully adhering to them (3). Please only answer with a single integer."""
         print(API_eval_prompt)
         try:
             with st.spinner("Want to know how well you did? We are evaluating the quality of your guesses …"):

@@ -32,7 +32,7 @@ for round, hint_ad in st.session_state['evaluation_scores'].items():
                     "n_rounds": round,
                     "hint_adherence": hint_ad,
                     "n_guesses": n_guesses,
-                    "eval_score": hint_ad * n_guesses
+                    "eval_score": 0.5*hint_ad + 0.5*n_guesses
                 },
                 index =[0]
             ),
@@ -75,15 +75,16 @@ else:
 
 st.text("") #create whitespace between metrics
 
+st.bar_chart(eval_df.drop(["n_guesses", "eval_score"], axis=1), x_label= "Round", y_label="Hint adherence score (1 to 5)", color = "red")
+
+st.text("") #create whitespace between metrics
+
 st.markdown("""
 
 Your guesses are evaluated based on amount of guesses needed, and adherence to hints. The lower the score, the better:
 
 """)
 
-st.text("") #create whitespace between metrics
-
-st.bar_chart(eval_df.drop(["n_guesses", "eval_score"], axis=1), x_label= "Round", y_label="Hint adherence score (1 to 5)", color = "red")
 
 st.text("") #create whitespace between metrics
 
@@ -101,22 +102,14 @@ Your favourite animal guesses from all rounds are:
 
 st.text("") #create whitespace between metrics
 
-COLOR = 'white' # default text colour is black
-plt.rcParams['text.color'] = COLOR
-plt.rcParams['axes.labelcolor'] = COLOR
-plt.rcParams['xtick.color'] = COLOR
-plt.rcParams['ytick.color'] = COLOR
-
 count = Counter(st.session_state.game_history['guessed_animal'].str.lower())
 
 if len(count) == 0:
     st.write("No guesses made yet.")
 else:
     fig, ax = plt.subplots()
-    #ax.pie(count.values(), labels=count.keys(), autopct='%1.1f%%', startangle=90)
-    ax.pie(count.values(), labels=count.keys(), textprops={'color': 'black'}, autopct='%1.1f%%', startangle=90)
+    ax.pie(count.values(), labels=count.keys(), autopct='%1.1f%%', startangle=90)
     ax.axis('equal')  # to make round
-    fig.set_facecolor('none') # default background colour is white
 
     st.pyplot(fig)
 
