@@ -16,9 +16,11 @@ st.set_page_config(page_title="Welcome to our Animal Guessing Game!")
 
 #------------Initialize session state variables if they don't exist yet----------------------------------
 
+#store number of guesses
 if 'n_guess' not in st.session_state:
     st.session_state['n_guess'] = 0
 
+#store number of correct guesses
 if 'correct_guesses' not in st.session_state:
     st.session_state['correct_guesses'] = 0
 
@@ -37,15 +39,19 @@ if 'game_history' not in st.session_state:
 if 'target_animal' not in st.session_state:
     st.session_state['target_animal'] = np.random.choice(ANIMALS)
 
+#keep track of the target animal in each round
 if 'target_stats' not in st.session_state:
     st.session_state['target_stats'] = []
 
+#keep track of the round number 
 if 'round_idx' not in st.session_state:
     st.session_state['round_idx'] = 1
 
+#keept track of the guess quality evaluation score for each round 
 if 'evaluation_scores' not in st.session_state:
     st.session_state['evaluation_scores'] = dict()
 
+#store the API key in session state to avoid re-entering it after switching between pages
 if 'api_key' not in st.session_state:
     st.session_state.api_key = None
 
@@ -102,6 +108,7 @@ if submitted:
 
     #if user is wrong, let them know and let the LLM provide a hint (while keeping track of previous hints)
     else:
+        #prepare the prompt for the LLM to provide a hint
         AI_prompt = f"""You are a hint-provider in an animal guessing game. 
         The user guessed the following animal: {user_input}. 
         The correct animal is: {st.session_state['target_animal']}. 
@@ -111,7 +118,9 @@ if submitted:
         Here are the previous hints you have given in this round: {st.session_state['game_history'][st.session_state['game_history']['round_idx'] == st.session_state['round_idx']]['AI_hint'].tolist()}. 
         Please provide a new hint that is not in the list of previous hints."""
         print(AI_prompt)
+        #display an error message to the user
         st.error(f"Sorry, that's not correct. We'll give you a hint and you can try again!")
+        #generate the hint for the user
         try:
             with st.spinner("Hint is being generated …"):
                 response = client.chat.completions.create(
@@ -155,6 +164,7 @@ if submitted:
         # e.g.: guess 1 hint 1 array or provide example
         # OR embed guess and true animal, calculate cosine difference
         st.write("Here's an evaluation of the quality of your guesses in this round:")
+        #prepare the prompt for the LLM to evaluate the quality of the guesses
         hint_guess_pairs = st.session_state['game_history'][st.session_state['game_history']['round_idx'] == st.session_state['round_idx']][['guessed_animal', 'AI_hint']].values.tolist()
         print(f"Hint-guess pairs for evaluation: {hint_guess_pairs}")
         API_eval_prompt = f"""You are an evaluator of user guesses in an animal guessing game. 
@@ -170,6 +180,7 @@ if submitted:
         E.g. if the hint was that the animal hates water and the user guesses fish, this would be considered no adherence (5).
         A value in the middle indicates that the guess wasn't entirely ignoring the hints but also not fully adhering to them (3). Please only answer with a single integer."""
         print(API_eval_prompt)
+        #evaluate the quality of the guesses using the LLM
         try:
             with st.spinner("Want to know how well you did? We are evaluating the quality of your guesses …"):
                 response = client.chat.completions.create(
