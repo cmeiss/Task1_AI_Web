@@ -41,7 +41,7 @@ for round, hint_ad in st.session_state['evaluation_scores'].items():
     )
 eval_df = eval_df.set_index("n_rounds")
 
-# M´Number of guesses per game and on average (rounded to two decimal points) 
+# Number of guesses per game and on average (rounded to two decimal points) 
 st.markdown("""
 
 Wow, so quick! Below you can see the amount of guesses for each round ...
@@ -75,6 +75,7 @@ else:
 
 st.text("") #create whitespace between metrics
 
+# Bar chart showing the evaluation score for each round
 st.bar_chart(eval_df.drop(["n_guesses", "eval_score"], axis=1), x_label= "Round", y_label="Hint adherence score (1 to 5)", color = "red")
 
 st.text("") #create whitespace between metrics
@@ -88,12 +89,13 @@ Your guesses are evaluated based on amount of guesses needed, and adherence to h
 
 st.text("") #create whitespace between metrics
 
+# Bar chart showing hint adherence score for each round
 st.bar_chart(eval_df.drop(["n_guesses", "hint_adherence"], axis=1), x_label= "Round", y_label="Score", color = "violet")
 
 
 st.text("") #create whitespace between metrics
 
-
+#Pie Chart showing the distribution of guessed animals across all rounds
 st.markdown("""
 
 Your favourite animal guesses from all rounds are:
